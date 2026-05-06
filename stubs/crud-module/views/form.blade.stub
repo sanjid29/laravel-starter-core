@@ -27,6 +27,7 @@
 
                     <div class="card-body">
                         <div class="row">
+
                             @include('layouts.form.inputs.text', ['var' => [
                                 'name'        => 'name',
                                 'label'       => 'Name',
@@ -52,6 +53,68 @@
                                 'placeholder' => 'Enter title',
                                 'div'         => 'col-md-12',
                             ]])
+
+                            {{-- @include('layouts.form.inputs.textarea', ['var' => [
+                                'name'        => 'description',
+                                'label'       => 'Description',
+                                'value'       => $record?->description,
+                                'placeholder' => 'Enter description',
+                                'div'         => 'col-md-12',
+                                'rows'        => 4,
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.select', ['var' => [
+                                'name'     => 'status',
+                                'label'    => 'Status',
+                                'value'    => $record?->status,
+                                'div'      => 'col-md-6',
+                                'required' => true,
+                                'options'  => [
+                                    'active'   => 'Active',
+                                    'inactive' => 'Inactive',
+                                ],
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.select-model', ['var' => [
+                                'name'        => 'category_id',
+                                'label'       => 'Category',
+                                'value'       => $record?->category_id,
+                                'div'         => 'col-md-6',
+                                'required'    => true,
+                                'model'       => \App\Models\Category::class,
+                                'option_id'   => 'id',
+                                'option_name' => 'name',
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.date', ['var' => [
+                                'name'  => 'date',
+                                'label' => 'Date',
+                                'value' => $record?->date,
+                                'div'   => 'col-md-6',
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.number', ['var' => [
+                                'name'  => 'amount',
+                                'label' => 'Amount',
+                                'value' => $record?->amount,
+                                'div'   => 'col-md-6',
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.switch', ['var' => [
+                                'name'  => 'is_active',
+                                'label' => 'Active',
+                                'value' => $record?->is_active ?? true,
+                                'div'   => 'col-md-6',
+                            ]]) --}}
+
+                            {{-- @include('layouts.form.inputs.media-file', ['var' => [
+                                'name'       => 'image',
+                                'label'      => 'Image',
+                                'value'      => $record?->getFirstMediaUrl('image'),
+                                'div'        => 'col-md-12',
+                                'collection' => 'image',
+                            ]]) --}}
+
                         </div>
                     </div>
 
