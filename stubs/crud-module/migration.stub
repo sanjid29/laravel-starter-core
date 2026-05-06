@@ -1,0 +1,42 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Permission;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('{module_names}', function (Blueprint $table) {
+            $table->id();
+            $table->uuid('uuid')->unique()->after('id');
+            $table->string('name');
+            $table->string('title')->nullable()->default(null);
+            $table->string('name_ext')->nullable()->default(null);
+            $table->timestamps();
+            $table->unsignedBigInteger('created_by')->nullable()->default(null);
+            $table->unsignedBigInteger('updated_by')->nullable()->default(null);
+            $table->softDeletes();
+            $table->unsignedBigInteger('deleted_by')->nullable()->default(null);
+        });
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        collect(['{module-names}.view-grid', '{module-names}.view', '{module-names}.create', '{module-names}.update', '{module-names}.delete', '{module-names}.restore', '{module-names}.force-delete', '{module-names}.report'])
+            ->each(fn (string $name) => Permission::firstOrCreate(
+                ['name' => $name, 'guard_name' => 'web'],
+                ['module' => '{module-names}']
+            ));
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('{module_names}');
+
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        Permission::where('module', '{module-names}')->delete();
+    }
+};

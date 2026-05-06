@@ -1,0 +1,36 @@
+{
+    "name": "sanjid29/laravel-starter-core",
+    "description": "Core infrastructure for Laravel starter kit — base controllers, traits, middleware, and CRUD scaffolding commands.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sanjid Habib",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "laravel/framework": "^12.0",
+        "spatie/laravel-permission": "^7.0",
+        "spatie/laravel-activitylog": "^4.0",
+        "spatie/laravel-medialibrary": "^11.0",
+        "yajra/laravel-datatables-oracle": "^12.0",
+        "barryvdh/laravel-dompdf": "^3.0",
+        "phpoffice/phpspreadsheet": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sanjid29\\StarterCore\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sanjid29\\StarterCore\\StarterKitServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

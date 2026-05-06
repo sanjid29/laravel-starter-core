@@ -1,0 +1,3 @@
+@extends('report.includes.print')
+
+@section('print-title', '{Module Name} Report')

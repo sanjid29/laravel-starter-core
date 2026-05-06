@@ -1,0 +1,72 @@
+@extends('layouts.form.app')
+
+@section('header')
+    <h1 class="m-0">{{ $editing ? 'Edit '.$moduleTitle : 'Add '.$moduleTitle }}</h1>
+@endsection
+
+@section('breadcrumb')
+    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
+    <li class="breadcrumb-item"><a href="{{ route($moduleName.'.index') }}">{{ $moduleTitlePlural }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ $editing ? 'Edit' : 'Create' }}</li>
+@endsection
+
+@section('content')
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card card-primary card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="bi bi-{{ $editing ? 'pencil' : 'grid' }} me-2"></i>
+                        {{ $editing ? 'Edit '.$moduleTitle.': '.$record->name : 'New '.$moduleTitle }}
+                    </h3>
+                </div>
+                <form action="{{ $editing ? route($moduleName.'.update', $record) : route($moduleName.'.store') }}"
+                      method="POST">
+                    @csrf
+                    @if($editing) @method('PUT') @endif
+
+                    <div class="card-body">
+                        <div class="row">
+                            @include('layouts.form.inputs.text', ['var' => [
+                                'name'        => 'name',
+                                'label'       => 'Name',
+                                'value'       => $record?->name,
+                                'placeholder' => 'Enter name',
+                                'div'         => 'col-md-6',
+                                'required'    => true,
+                                'autofocus'   => true,
+                            ]])
+
+                            @include('layouts.form.inputs.text', ['var' => [
+                                'name'        => 'name_ext',
+                                'label'       => 'Name Extension',
+                                'value'       => $record?->name_ext,
+                                'placeholder' => 'Enter name extension',
+                                'div'         => 'col-md-6',
+                            ]])
+
+                            @include('layouts.form.inputs.text', ['var' => [
+                                'name'        => 'title',
+                                'label'       => 'Title',
+                                'value'       => $record?->title,
+                                'placeholder' => 'Enter title',
+                                'div'         => 'col-md-12',
+                            ]])
+                        </div>
+                    </div>
+
+                    @include('layouts.form.includes.footer', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            @if($editing)
+                @include('layouts.form.includes.audits', ['element' => $record])
+                @include('layouts.form.includes.delete-warning', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
+            @else
+                @include('layouts.form.includes.information', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
+            @endif
+        </div>
+    </div>
+@endsection

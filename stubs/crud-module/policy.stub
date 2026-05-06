@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Policies;
+
+use Sanjid29\StarterCore\Policies\BasePolicy;
+
+class {ModuleName}Policy extends BasePolicy
+{
+    protected function resource(): string
+    {
+        return '{module-names}';
+    }
+}

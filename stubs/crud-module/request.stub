@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Sanjid29\StarterCore\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rule;
+
+class {ModuleName}Request extends BaseFormRequest
+{
+    public function rules(): array
+    {
+        $id = $this->recordId();
+
+        return [
+            'name' => ['required', 'string', 'max:255', Rule::unique('{module_names}', 'name')->ignore($id)],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'The name field is required.',
+            'name.unique'   => 'A {Module Name} with this name already exists.',
+        ];
+    }
+}

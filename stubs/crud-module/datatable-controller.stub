@@ -1,0 +1,114 @@
+<?php
+
+namespace App\Http\Controllers\DataTableController;
+
+use Sanjid29\StarterCore\Http\Controllers\BaseDataTableController;
+use App\Models\{ModuleName};
+use Illuminate\Database\Eloquent\Builder;
+
+class {ModuleName}DataTableController extends BaseDataTableController
+{
+    protected array $rawColumns = ['updated_at', 'updated_by'];
+
+    public function __construct()
+    {
+        $this->model = {ModuleName}::class;
+        $this->routePrefix = '{module-names}';
+    }
+
+    protected function indexQuery(): Builder
+    {
+        return {ModuleName}::query()
+            ->with(['updatedBy'])
+            ->orderBy('name');
+    }
+
+    protected function dataTableColumns(): array
+    {
+        return [
+            'updated_at' => fn ({ModuleName} ${moduleName}) => ${moduleName}->updated_at?->format('M d, Y H:i') ?? '—',
+            'updated_by' => fn ({ModuleName} ${moduleName}) => ${moduleName}->updatedBy?->name ?? '—',
+        ];
+    }
+
+    protected function actionColumn(${moduleName}): string
+    {
+        $showUrl   = route('{module-names}.show', ${moduleName});
+        $editUrl   = route('{module-names}.edit', ${moduleName});
+        $deleteUrl = route('{module-names}.destroy', ${moduleName});
+        $canEdit   = auth()->user()?->can('{module-names}.update');
+        $canDelete = auth()->user()?->can('{module-names}.delete');
+
+        $html = '<div class="btn-group btn-group-sm">
+                <a href="'.$showUrl.'" class="btn btn-info" title="View">
+                    <i class="bi bi-eye"></i>
+                </a>';
+
+        if ($canEdit) {
+            $html .= '<a href="'.$editUrl.'" class="btn btn-primary" title="Edit">
+                    <i class="bi bi-pencil"></i>
+                </a>';
+        }
+
+        if ($canDelete) {
+            $html .= '<button type="button" class="btn btn-danger btn-delete"
+                    data-url="'.$deleteUrl.'"
+                    data-name="'.e(${moduleName}->name).'" title="Delete">
+                    <i class="bi bi-trash"></i>
+                </button>';
+        }
+
+        return $html.'</div>';
+    }
+
+    public function tableColumns(): array
+    {
+        return [
+            [
+                'data'       => 'DT_RowIndex',
+                'name'       => 'DT_RowIndex',
+                'label'      => '#',
+                'width'      => '50',
+                'orderable'  => false,
+                'searchable' => false,
+                'className'  => 'text-center',
+            ],
+            [
+                'data'  => 'id',
+                'name'  => 'id',
+                'label' => 'ID',
+                'width' => '60',
+                'className' => 'text-center',
+            ],
+            [
+                'data'  => 'name',
+                'name'  => 'name',
+                'label' => 'Name',
+            ],
+            [
+                'data'       => 'updated_at',
+                'name'       => 'updated_at',
+                'label'      => 'Updated At',
+                'orderable'  => true,
+                'searchable' => false,
+                'className'  => 'text-nowrap',
+            ],
+            [
+                'data'       => 'updated_by',
+                'name'       => 'updated_by',
+                'label'      => 'Updated By',
+                'orderable'  => false,
+                'searchable' => false,
+            ],
+            [
+                'data'       => 'action',
+                'name'       => 'action',
+                'label'      => 'Actions',
+                'width'      => '180',
+                'orderable'  => false,
+                'searchable' => false,
+                'className'  => 'text-center',
+            ],
+        ];
+    }
+}

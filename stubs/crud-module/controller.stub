@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Http\Controllers\CrudController;
+
+use Sanjid29\StarterCore\Http\Controllers\BaseController;
+use App\Http\Controllers\DataTableController\{ModuleName}DataTableController;
+use App\Http\Requests\{ModuleName}Request;
+use App\Models\{ModuleName};
+use Illuminate\View\View;
+
+class {ModuleName}Controller extends BaseController
+{
+    public function __construct({ModuleName}DataTableController $dataTableController)
+    {
+        $this->model               = {ModuleName}::class;
+        $this->routePrefix         = '{module-names}';
+        $this->viewPrefix          = '{module-names}';
+        $this->resourceName        = '{Module Name}';
+        $this->dataTableController = $dataTableController;
+    }
+
+    protected function requestClass(): ?string
+    {
+        return {ModuleName}Request::class;
+    }
+
+    public function show(int|string $record): View
+    {
+        ${moduleName} = $this->findRecord($record);
+        $this->authorizeAction('view', ${moduleName});
+
+        return view('{module-names}.show', [
+            '{moduleName}'     => ${moduleName},
+            'moduleName'       => $this->routePrefix,
+            'moduleTitle'      => $this->resourceName,
+            'moduleTitlePlural' => \Illuminate\Support\Str::plural($this->resourceName),
+        ]);
+    }
+}

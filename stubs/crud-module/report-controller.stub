@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Http\Controllers\ReportController;
+
+use Sanjid29\StarterCore\Http\Controllers\BaseReportController;
+use App\Models\{ModuleName};
+use Illuminate\Database\Eloquent\Builder;
+
+class {ModuleName}ReportController extends BaseReportController
+{
+    protected string $modelClass = {ModuleName}::class;
+
+    protected string $viewPath = '{module-names}.report';
+
+    protected string $printView = '{module-names}.report.print';
+
+    protected array $searchFields = ['name', 'title'];
+
+    protected array $fullTextFields = ['name', 'title', 'name_ext'];
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    public function __invoke(): mixed
+    {
+        $this->authorize('viewAny', {ModuleName}::class);
+
+        return $this->output();
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Column configuration
+    // ─────────────────────────────────────────────────────────────────
+
+    protected function excludedColumns(): array
+    {
+        return ['uuid', 'deleted_at', 'deleted_by'];
+    }
+
+    protected function ghostColumns(): array
+    {
+        return ['serial'];
+    }
+
+    protected function defaultColumns(): array
+    {
+        return ['id'];
+    }
+
+    public function selectedColumns(): array
+    {
+        if ($this->request->filled('columns_csv')) {
+            return $this->csvToArray($this->request->input('columns_csv'));
+        }
+
+        return [
+            'serial',
+            'id',
+            'name',
+            'title',
+            'name_ext',
+            'created_at',
+            'updated_at',
+        ];
+    }
+
+    public function aliasFor(string $key): string
+    {
+        return [
+            'serial'     => 'S/L',
+            'id'         => 'ID',
+            'name'       => 'Name',
+            'title'      => 'Title',
+            'name_ext'   => 'Name Ext.',
+            'created_at' => 'Created At',
+            'updated_at' => 'Updated At',
+            'created_by' => 'Created By',
+            'updated_by' => 'Updated By',
+        ][$key] ?? parent::aliasFor($key);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Query
+    // ─────────────────────────────────────────────────────────────────
+
+    protected function baseQuery(): Builder
+    {
+        return {ModuleName}::query()->orderBy('name');
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Result mutation
+    // ─────────────────────────────────────────────────────────────────
+
+    public function mutateResult(): mixed
+    {
+        $result = $this->result();
+        $serial = 1;
+
+        foreach ($result as $row) {
+            $row->serial = $serial++;
+        }
+
+        return $result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Cell rendering
+    // ─────────────────────────────────────────────────────────────────
+
+    public function renderCell(string $column, object $row): string
+    {
+        $value = $row->$column ?? '';
+
+        if ($column === 'id') {
+            return '<a href="'.route('{module-names}.show', $row->id).'">'.e($value).'</a>';
+        }
+
+        if ($column === 'name') {
+            return '<a href="'.route('{module-names}.show', $row->id).'">'.e($value).'</a>';
+        }
+
+        return parent::renderCell($column, $row);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Extra view data
+    // ─────────────────────────────────────────────────────────────────
+
+    protected function extraViewVars(): array
+    {
+        return [];
+    }
+}

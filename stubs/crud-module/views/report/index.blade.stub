@@ -1,0 +1,41 @@
+@extends('report.report')
+
+@section('title', '{Module Name} Report')
+
+@section('filters')
+
+    @include('layouts.form.inputs.text', ['var' => [
+        'name'        => 'name',
+        'label'       => 'Name',
+        'value'       => request('name'),
+        'placeholder' => 'Search name…',
+        'div'         => 'col-md-3',
+        'class'       => 'form-control-sm',
+    ]])
+
+    @include('layouts.form.inputs.text', ['var' => [
+        'name'        => 'title',
+        'label'       => 'Title',
+        'value'       => request('title'),
+        'placeholder' => 'Search title…',
+        'div'         => 'col-md-3',
+        'class'       => 'form-control-sm',
+    ]])
+
+    @include('layouts.form.inputs.date', ['var' => [
+        'name'  => 'created_at_from',
+        'label' => 'Created From',
+        'value' => request('created_at_from'),
+        'div'   => 'col-md-2',
+        'class' => 'form-control-sm',
+    ]])
+
+    @include('layouts.form.inputs.date', ['var' => [
+        'name'  => 'created_at_to',
+        'label' => 'Created To',
+        'value' => request('created_at_to'),
+        'div'   => 'col-md-2',
+        'class' => 'form-control-sm',
+    ]])
+
+@endsection
