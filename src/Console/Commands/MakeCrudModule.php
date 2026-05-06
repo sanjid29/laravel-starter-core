@@ -82,13 +82,13 @@ class MakeCrudModule extends Command
             "resources/views/{$kebabName}/report/print.blade.php" => 'views/report/print.blade.stub',
         ];
 
-        // Prefer published stubs in the app's stubs/ directory; fall back to package stubs
         $appStubsPath = base_path('stubs/crud-module');
         $packageStubsPath = dirname(__DIR__, 3).'/stubs/crud-module';
-        $stubsPath = is_dir($appStubsPath) ? $appStubsPath : $packageStubsPath;
 
         foreach ($files as $destination => $stub) {
-            $this->writeFile($destination, "{$stubsPath}/{$stub}");
+            $published = "{$appStubsPath}/{$stub}";
+            $stubPath = file_exists($published) ? $published : "{$packageStubsPath}/{$stub}";
+            $this->writeFile($destination, $stubPath);
         }
     }
 
