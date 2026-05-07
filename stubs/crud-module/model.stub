@@ -15,18 +15,26 @@ class {ModuleName} extends Model
     use HasActivityLog, HasAuditFields, HasFactory, HasUuid, SoftDeletes;
 
     protected $fillable = [
+        'id',
         'uuid',
         'name',
         'title',
         'name_ext',
         'created_by',
+        'created_at',
         'updated_by',
+        'updated_at',
         'deleted_by',
+        'deleted_at',
     ];
 
     public function casts(): array
     {
-        return [];
+         return [
+                    'created_at'=>'datetime',
+                    'updated_at'=>'datetime',
+                    'deleted_at'=>'datetime',
+                ];
     }
 
     protected static function booted(): void
