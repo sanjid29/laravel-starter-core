@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\{ModuleName};
+use Illuminate\Database\Eloquent\Model;
+use Sanjid29\StarterCore\Services\BaseService;
+
+class {ModuleName}Service extends BaseService
+{
+    protected string $modelClass = {ModuleName}::class;
+
+    /** Fields that can never be changed after creation */
+    protected array $immutable = [];
+
+    /**
+     * Reshape, cast, or denormalize data before the record is created.
+     */
+    protected function transformForCreate(array $data): array
+    {
+        return $data;
+    }
+
+    /**
+     * Reshape, cast, or denormalize data before the record is updated.
+     */
+    protected function transformForUpdate(array $data, Model $record): array
+    {
+        return $data;
+    }
+
+    /**
+     * Side-effects after create: sync relations, dispatch jobs, etc.
+     */
+    protected function afterCreate(Model $record, array $data): void {}
+
+    /**
+     * Side-effects after update: sync relations, dispatch jobs, etc.
+     */
+    protected function afterUpdate(Model $record, array $data): void {}
+}

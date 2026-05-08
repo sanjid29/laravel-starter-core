@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Sanjid29\StarterCore\Console\Commands\MakeCrudModule;
+use Sanjid29\StarterCore\Console\Commands\MakeService;
 use Sanjid29\StarterCore\Console\Commands\RemoveCrudModule;
 use Sanjid29\StarterCore\Http\Middleware\FeatureEnabled;
 use Sanjid29\StarterCore\Http\Middleware\HandleImpersonation;
@@ -26,7 +27,7 @@ class StarterKitServiceProvider extends ServiceProvider
         $this->registerGateBefore();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([MakeCrudModule::class, RemoveCrudModule::class]);
+            $this->commands([MakeCrudModule::class, RemoveCrudModule::class, MakeService::class]);
             $this->publishConfig();
             $this->publishMigrations();
             $this->publishStubs();

@@ -140,6 +140,18 @@ abstract class BaseController extends Controller
         return $this->successRedirect('updated');
     }
 
+    /**
+     * Called after a record is created (no service wired).
+     * Override to sync associations, dispatch jobs, or handle post-create logic.
+     */
+    protected function afterStore(Model $record, array $data): void {}
+
+    /**
+     * Called after a record is updated (no service wired).
+     * Override to sync associations, dispatch jobs, or handle post-update logic.
+     */
+    protected function afterUpdate(Model $record, array $data): void {}
+
     protected function beforeDestroy(Model $record): void {}
 
     protected function afterDestroy(Model $record): void
@@ -301,6 +313,10 @@ abstract class BaseController extends Controller
 
         $this->handleMediaUploads($formRequest, $record, isUpdate: false);
 
+        if (! $this->service) {
+            $this->afterStore($record, $data);
+        }
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -328,6 +344,10 @@ abstract class BaseController extends Controller
             : $model->update($data);
 
         $this->handleMediaUploads($formRequest, $model, isUpdate: true);
+
+        if (! $this->service) {
+            $this->afterUpdate($model, $data);
+        }
 
         if ($request->ajax()) {
             return response()->json([

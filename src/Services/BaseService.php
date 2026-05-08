@@ -16,7 +16,23 @@ abstract class BaseService
         return $this->immutable;
     }
 
-    // ── Hook stubs ───────────────────────────────────────────────────────
+    // ── Transform hooks ──────────────────────────────────────────────────
+    // Override to reshape, cast, or denormalize data before persisting.
+    // Runs before the before* side-effect hooks.
+
+    protected function transformForCreate(array $data): array
+    {
+        return $data;
+    }
+
+    protected function transformForUpdate(array $data, Model $record): array
+    {
+        return $data;
+    }
+
+    // ── Side-effect hooks ────────────────────────────────────────────────
+    // Use for relation syncing, external calls, dispatching jobs, etc.
+
     protected function beforeCreate(array &$data): void {}
 
     protected function afterCreate(Model $record, array $data): void {}
@@ -30,8 +46,10 @@ abstract class BaseService
     protected function afterDelete(Model $record): void {}
 
     // ── Core CRUD ────────────────────────────────────────────────────────
+
     public function create(array $data): Model
     {
+        $data = $this->transformForCreate($data);
         $this->beforeCreate($data);
         $record = $this->modelClass::create($data);
         $this->afterCreate($record, $data);
@@ -41,8 +59,9 @@ abstract class BaseService
 
     public function update(Model $record, array $data): Model
     {
-        $this->beforeUpdate($record, $data);
+        $data = $this->transformForUpdate($data, $record);
         $this->stripImmutable($data);
+        $this->beforeUpdate($record, $data);
         $record->update($data);
         $this->afterUpdate($record, $data);
 
@@ -57,6 +76,7 @@ abstract class BaseService
     }
 
     // ── Immutable handling ───────────────────────────────────────────────
+
     private function stripImmutable(array &$data): void
     {
         foreach ($this->immutable as $field) {
