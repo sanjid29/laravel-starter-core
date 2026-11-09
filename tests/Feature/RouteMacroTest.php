@@ -10,11 +10,6 @@ use Sanjid29\StarterCore\Tests\TestCase;
 
 class RouteMacroTest extends TestCase
 {
-    /**
-     * Register a module and refresh the router's name lookup. Routes are added to
-     * the collection before ->name() is chained on, so the name list is stale
-     * until refreshed — needed for Route::has()/getByName() to resolve them.
-     */
     private function registerModule(string $prefix, bool $public = false, bool $withDataTable = true): void
     {
         Route::crudModule(
@@ -23,14 +18,41 @@ class RouteMacroTest extends TestCase
             $withDataTable ? WidgetDataTableController::class : null,
             public: $public,
         );
+    }
 
-        $this->app['router']->getRoutes()->refreshNameLookup();
+    /**
+     * All registered route names. Read from each route's own getName() rather than
+     * the collection's name index, which is stale until a request is matched.
+     *
+     * @return array<int, string>
+     */
+    private function routeNames(): array
+    {
+        return collect(Route::getRoutes()->getRoutes())
+            ->map(fn ($route) => $route->getName())
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function middlewareFor(string $name): array
+    {
+        $route = collect(Route::getRoutes()->getRoutes())
+            ->first(fn ($route) => $route->getName() === $name);
+
+        $this->assertNotNull($route, "Route {$name} is not registered");
+
+        return $route->gatherMiddleware();
     }
 
     #[Test]
     public function it_registers_the_full_set_of_named_routes(): void
     {
         $this->registerModule('widgets');
+        $names = $this->routeNames();
 
         $expected = [
             'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
@@ -39,7 +61,7 @@ class RouteMacroTest extends TestCase
         ];
 
         foreach ($expected as $name) {
-            $this->assertTrue(Route::has("widgets.{$name}"), "Missing route widgets.{$name}");
+            $this->assertContains("widgets.{$name}", $names, "Missing route widgets.{$name}");
         }
     }
 
@@ -48,17 +70,14 @@ class RouteMacroTest extends TestCase
     {
         $this->registerModule('widgets');
 
-        $middleware = Route::getRoutes()->getByName('widgets.destroy')->gatherMiddleware();
-
-        $this->assertContains('permission:widgets.delete', $middleware);
+        $this->assertContains('permission:widgets.delete', $this->middlewareFor('widgets.destroy'));
     }
 
     #[Test]
     public function select_is_guarded_by_view_permission_by_default(): void
     {
         $this->registerModule('widgets');
-
-        $middleware = Route::getRoutes()->getByName('widgets.select')->gatherMiddleware();
+        $middleware = $this->middlewareFor('widgets.select');
 
         $this->assertContains('permission:widgets.view', $middleware);
         $this->assertNotContains('throttle:api', $middleware);
@@ -69,8 +88,8 @@ class RouteMacroTest extends TestCase
     {
         $this->registerModule('gadgets', public: true);
 
-        $select = Route::getRoutes()->getByName('gadgets.select')->gatherMiddleware();
-        $json = Route::getRoutes()->getByName('gadgets.json')->gatherMiddleware();
+        $select = $this->middlewareFor('gadgets.select');
+        $json = $this->middlewareFor('gadgets.json');
 
         $this->assertContains('throttle:api', $select);
         $this->assertNotContains('permission:gadgets.view', $select);
@@ -83,9 +102,10 @@ class RouteMacroTest extends TestCase
     public function json_route_is_only_registered_when_a_datatable_controller_is_given(): void
     {
         $this->registerModule('thingers', withDataTable: false);
+        $names = $this->routeNames();
 
-        $this->assertTrue(Route::has('thingers.index'));
-        $this->assertFalse(Route::has('thingers.json'));
-        $this->assertFalse(Route::has('thingers.datatable'));
+        $this->assertContains('thingers.index', $names);
+        $this->assertNotContains('thingers.json', $names);
+        $this->assertNotContains('thingers.datatable', $names);
     }
 }
