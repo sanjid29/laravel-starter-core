@@ -5,7 +5,17 @@ All notable changes to `laravel-starter-core` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.0] - 2026-11-09
+
+### Breaking
+- **`GET /{module}/select` response shape changed.** It now returns Select2's native
+  `{ "results": [...], "pagination": { "more": bool } }` instead of a flat
+  `[ { "id", "text" } ]` array. Front-ends that consumed the old flat format must
+  update their Select2 config (the native shape needs no `processResults` mapping).
+- **`barryvdh/laravel-dompdf` and `phpoffice/phpspreadsheet` moved from `require` to
+  `suggest`.** If your app uses `BaseReportController`, add them to your own
+  `composer.json`, otherwise a `composer update` may remove them:
+  `composer require barryvdh/laravel-dompdf phpoffice/phpspreadsheet`.
 
 ### Added
 - Configurable Select2 / AJAX search endpoint (`selectSearchColumns()`, `selectFields()`,
@@ -26,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `orchestra/testbench ^10.0 || ^11.0`. CI now runs a Laravel 12 + 13 matrix.
 - `make:crud-module` model stub now whitelists only business columns in `$fillable`
   (removed `id`, `uuid`, audit fields and timestamps) to prevent mass-assignment spoofing.
-- `barryvdh/laravel-dompdf` and `phpoffice/phpspreadsheet` moved from `require` to
-  `suggest` (only needed for `BaseReportController` exports).
 
 ### Fixed
 - DataTable stub no longer marks plain-text columns as raw (unescaped) HTML.
