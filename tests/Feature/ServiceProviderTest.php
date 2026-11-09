@@ -2,6 +2,8 @@
 
 namespace Sanjid29\StarterCore\Tests\Feature;
 
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\Test;
 use Sanjid29\StarterCore\Tests\TestCase;
 
@@ -27,13 +29,13 @@ class ServiceProviderTest extends TestCase
     #[Test]
     public function it_registers_the_crud_module_route_macro(): void
     {
-        $this->assertTrue(\Illuminate\Support\Facades\Route::hasMacro('crudModule'));
+        $this->assertTrue(Route::hasMacro('crudModule'));
     }
 
     #[Test]
     public function it_registers_the_artisan_commands(): void
     {
-        $commands = array_keys($this->app[\Illuminate\Contracts\Console\Kernel::class]->all());
+        $commands = array_keys($this->app[Kernel::class]->all());
 
         $this->assertContains('make:crud-module', $commands);
         $this->assertContains('remove:crud-module', $commands);

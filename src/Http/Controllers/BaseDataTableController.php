@@ -3,6 +3,7 @@
 namespace Sanjid29\StarterCore\Http\Controllers;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ abstract class BaseDataTableController extends Controller
 {
     use AuthorizesRequests;
 
-    /** @var class-string<\Illuminate\Database\Eloquent\Model> */
+    /** @var class-string<Model> */
     protected string $model;
 
     protected string $routePrefix;
