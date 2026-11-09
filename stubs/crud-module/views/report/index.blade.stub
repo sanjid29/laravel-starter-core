@@ -4,38 +4,32 @@
 
 @section('filters')
 
-    @include('layouts.form.inputs.text', ['var' => [
-        'name'        => 'name',
-        'label'       => 'Name',
-        'value'       => request('name'),
-        'placeholder' => 'Search name…',
-        'div'         => 'col-md-3',
-        'class'       => 'form-control-sm',
-    ]])
+    <x-form.input name="name"
+                  label="Name"
+                  :value="request('name')"
+                  placeholder="Search name…"
+                  class="form-control-sm"
+                  col="col-md-3" />
 
-    @include('layouts.form.inputs.text', ['var' => [
-        'name'        => 'title',
-        'label'       => 'Title',
-        'value'       => request('title'),
-        'placeholder' => 'Search title…',
-        'div'         => 'col-md-3',
-        'class'       => 'form-control-sm',
-    ]])
+    <x-form.input name="title"
+                  label="Title"
+                  :value="request('title')"
+                  placeholder="Search title…"
+                  class="form-control-sm"
+                  col="col-md-3" />
 
-    @include('layouts.form.inputs.date', ['var' => [
-        'name'  => 'created_at_from',
-        'label' => 'Created From',
-        'value' => request('created_at_from'),
-        'div'   => 'col-md-2',
-        'class' => 'form-control-sm',
-    ]])
+    <x-form.input name="created_at_from"
+                  type="date"
+                  label="Created From"
+                  :value="request('created_at_from')"
+                  class="form-control-sm"
+                  col="col-md-2" />
 
-    @include('layouts.form.inputs.date', ['var' => [
-        'name'  => 'created_at_to',
-        'label' => 'Created To',
-        'value' => request('created_at_to'),
-        'div'   => 'col-md-2',
-        'class' => 'form-control-sm',
-    ]])
+    <x-form.input name="created_at_to"
+                  type="date"
+                  label="Created To"
+                  :value="request('created_at_to')"
+                  class="form-control-sm"
+                  col="col-md-2" />
 
 @endsection

@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -39,14 +40,19 @@ abstract class BaseController extends Controller
     protected ?BaseDataTableController $dataTableController = null;
 
     /**
-     * Optional service — only set if the child controller needs one.
-     * If null, BaseController handles create/update directly.
+     * Set this in a child controller when the module has logic around saving or
+     * deleting. Otherwise service() supplies a plain one.
      */
     protected ?BaseService $service = null;
 
     // ─────────────────────────────────────────────
     // Core Helpers
     // ─────────────────────────────────────────────
+
+    protected function service(): BaseService
+    {
+        return $this->service ??= BaseService::forModel($this->model);
+    }
 
     protected function findRecord(int|string $id): Model
     {
@@ -58,9 +64,13 @@ abstract class BaseController extends Controller
         return ($this->model)::withTrashed()->findOrFail($id);
     }
 
-    protected function authorizeAction(string $ability, ?Model $record = null): void
+    /**
+     * Routes decide who may do an action at all. This asks the module's policy
+     * whether that action is allowed on this particular record.
+     */
+    protected function authorizeRecord(string $ability, Model $record): void
     {
-        $this->authorize($ability, $record ?? $this->model);
+        $this->authorize($ability, $record);
     }
 
     protected function successRedirect(string $action): RedirectResponse
@@ -143,20 +153,10 @@ abstract class BaseController extends Controller
     }
 
     /**
-     * Called after a record is created (no service wired).
-     * Override to sync associations, dispatch jobs, or handle post-create logic.
+     * Remove a deleted record's uploaded files. Runs after the delete has been
+     * committed, because a file can't be brought back if the delete is undone.
      */
-    protected function afterStore(Model $record, array $data): void {}
-
-    /**
-     * Called after a record is updated (no service wired).
-     * Override to sync associations, dispatch jobs, or handle post-update logic.
-     */
-    protected function afterUpdate(Model $record, array $data): void {}
-
-    protected function beforeDestroy(Model $record): void {}
-
-    protected function afterDestroy(Model $record): void
+    protected function removeUploads(Model $record): void
     {
         foreach (array_keys($this->fileFields()) as $field) {
             if ($record->$field) {
@@ -234,8 +234,6 @@ abstract class BaseController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorizeAction('viewAny');
-
         $tableColumns = $this->dataTableController?->tableColumns() ?? [];
         $moduleName = $this->viewPrefix ?? null;
         $moduleTitle = $this->resourceName ?? null;
@@ -266,8 +264,6 @@ abstract class BaseController extends Controller
 
     public function create(): View
     {
-        $this->authorizeAction('create');
-
         return view("{$this->viewPrefix}.form", array_merge(
             [
                 'editing' => false,
@@ -288,7 +284,7 @@ abstract class BaseController extends Controller
     public function edit(int|string $record): View|JsonResponse
     {
         $model = $this->findRecord($record);
-        $this->authorizeAction('update', $model);
+        $this->authorizeRecord('update', $model);
 
         return view("{$this->viewPrefix}.form", array_merge(
             [
@@ -304,20 +300,16 @@ abstract class BaseController extends Controller
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorizeAction('create');
-
         $formRequest = $this->resolveRequest($request);
         $data = $this->transformStoreData($this->handleFileUploads($formRequest, $formRequest->validated()));
 
-        $record = $this->service
-            ? $this->service->create($data)
-            : ($this->model)::create($data);
+        $record = DB::transaction(function () use ($formRequest, $data): Model {
+            $record = $this->service()->create($data);
 
-        $this->handleMediaUploads($formRequest, $record, isUpdate: false);
+            $this->handleMediaUploads($formRequest, $record, isUpdate: false);
 
-        if (! $this->service) {
-            $this->afterStore($record, $data);
-        }
+            return $record;
+        });
 
         if ($request->ajax()) {
             return response()->json([
@@ -333,7 +325,7 @@ abstract class BaseController extends Controller
     public function update(Request $request, int|string $record): RedirectResponse|JsonResponse
     {
         $model = $this->findRecord($record);
-        $this->authorizeAction('update', $model);
+        $this->authorizeRecord('update', $model);
 
         $formRequest = $this->resolveRequest($request);
         $data = $this->transformUpdateData(
@@ -341,15 +333,11 @@ abstract class BaseController extends Controller
             $model
         );
 
-        $this->service
-            ? $this->service->update($model, $data)
-            : $model->update($data);
+        DB::transaction(function () use ($formRequest, $model, $data): void {
+            $this->service()->update($model, $data);
 
-        $this->handleMediaUploads($formRequest, $model, isUpdate: true);
-
-        if (! $this->service) {
-            $this->afterUpdate($model, $data);
-        }
+            $this->handleMediaUploads($formRequest, $model, isUpdate: true);
+        });
 
         if ($request->ajax()) {
             return response()->json([
@@ -437,8 +425,6 @@ abstract class BaseController extends Controller
 
     public function recycleBin(): View
     {
-        $this->authorizeAction('recycleBin');
-
         $tableColumns = $this->dataTableController?->tableColumns() ?? [];
         $moduleName = $this->viewPrefix;
         $moduleTitle = $this->resourceName;
@@ -470,7 +456,7 @@ abstract class BaseController extends Controller
     public function restore(int|string $record): JsonResponse|RedirectResponse
     {
         $model = $this->findTrashedRecord($record);
-        $this->authorizeAction('restore', $model);
+        $this->authorizeRecord('restore', $model);
 
         $model->restore();
 
@@ -485,11 +471,10 @@ abstract class BaseController extends Controller
     public function forceDelete(int|string $record): JsonResponse|RedirectResponse
     {
         $model = $this->findTrashedRecord($record);
-        $this->authorizeAction('forceDelete', $model);
+        $this->authorizeRecord('forceDelete', $model);
 
-        $this->beforeDestroy($model);
-        $model->forceDelete();
-        $this->afterDestroy($model);
+        DB::transaction(fn () => $this->service()->forceDelete($model));
+        $this->removeUploads($model);
 
         if (request()->expectsJson()) {
             return response()->json(['message' => "{$this->resourceName} permanently deleted."]);
@@ -502,11 +487,10 @@ abstract class BaseController extends Controller
     public function destroy(int|string $record): JsonResponse|RedirectResponse
     {
         $model = $this->findRecord($record);
-        $this->authorizeAction('delete', $model);
+        $this->authorizeRecord('delete', $model);
 
-        $this->beforeDestroy($model);
-        $model->delete();
-        $this->afterDestroy($model);
+        DB::transaction(fn () => $this->service()->delete($model));
+        $this->removeUploads($model);
 
         if (request()->ajax()) {
             return response()->json(['message' => $this->resolveMessage('deleted')]);

@@ -154,7 +154,9 @@ class MakeCrudModule extends Command
         $this->line('     });');
         $this->newLine();
 
-        $this->line('  <fg=cyan>5. Add a sidebar link in resources/views/layouts/dashboard/partials/sidebar.blade.php</>');
+        $this->line('  <fg=cyan>5. Add a sidebar link to both sidebars:</>');
+        $this->line('     resources/views/layouts/dashboard/includes/sidebar.blade.php');
+        $this->line('     resources/views/dashboards/includes/sidebar/superuser.blade.php');
         $this->newLine();
 
         $this->line('  <fg=cyan>6. Customise the views (form fields, table columns, show page, report filters).</>');

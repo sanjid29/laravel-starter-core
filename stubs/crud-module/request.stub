@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Sanjid29\StarterCore\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
+use Sanjid29\StarterCore\Http\Requests\BaseFormRequest;
 
 class {ModuleName}Request extends BaseFormRequest
 {

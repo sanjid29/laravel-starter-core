@@ -20,106 +20,64 @@
                         {{ $editing ? 'Edit '.$moduleTitle.': '.$record->name : 'New '.$moduleTitle }}
                     </h3>
                 </div>
-                <form action="{{ $editing ? route($moduleName.'.update', $record) : route($moduleName.'.store') }}"
-                      method="POST">
-                    @csrf
-                    @if($editing) @method('PUT') @endif
-
+                <x-form :action="$editing ? route($moduleName.'.update', $record) : route($moduleName.'.store')"
+                        :model="$record">
                     <div class="card-body">
                         <div class="row">
 
-                            @include('layouts.form.inputs.text', ['var' => [
-                                'name'        => 'name',
-                                'label'       => 'Name',
-                                'value'       => $record?->name,
-                                'placeholder' => 'Enter name',
-                                'div'         => 'col-md-6',
-                                'required'    => true,
-                                'autofocus'   => true,
-                            ]])
+                            <x-form.input name="name"
+                                          label="Name"
+                                          placeholder="Enter name"
+                                          col="col-md-6"
+                                          required
+                                          autofocus />
 
-                            @include('layouts.form.inputs.text', ['var' => [
-                                'name'        => 'name_ext',
-                                'label'       => 'Name Extension',
-                                'value'       => $record?->name_ext,
-                                'placeholder' => 'Enter name extension',
-                                'div'         => 'col-md-6',
-                            ]])
+                            <x-form.input name="name_ext"
+                                          label="Name Extension"
+                                          placeholder="Enter name extension"
+                                          col="col-md-6" />
 
-                            @include('layouts.form.inputs.text', ['var' => [
-                                'name'        => 'title',
-                                'label'       => 'Title',
-                                'value'       => $record?->title,
-                                'placeholder' => 'Enter title',
-                                'div'         => 'col-md-12',
-                            ]])
+                            <x-form.input name="title"
+                                          label="Title"
+                                          placeholder="Enter title"
+                                          col="col-md-12" />
 
-                            {{-- @include('layouts.form.inputs.textarea', ['var' => [
-                                'name'        => 'description',
-                                'label'       => 'Description',
-                                'value'       => $record?->description,
-                                'placeholder' => 'Enter description',
-                                'div'         => 'col-md-12',
-                                'rows'        => 4,
-                            ]]) --}}
+                            {{-- <x-form.textarea name="description"
+                                             label="Description"
+                                             placeholder="Enter description"
+                                             rows="4"
+                                             col="col-md-12" /> --}}
 
-                            {{-- @include('layouts.form.inputs.select', ['var' => [
-                                'name'     => 'status',
-                                'label'    => 'Status',
-                                'value'    => $record?->status,
-                                'div'      => 'col-md-6',
-                                'required' => true,
-                                'options'  => [
-                                    'active'   => 'Active',
-                                    'inactive' => 'Inactive',
-                                ],
-                            ]]) --}}
+                            {{-- <x-form.select name="status"
+                                           label="Status"
+                                           col="col-md-6"
+                                           required
+                                           :options="['active' => 'Active', 'inactive' => 'Inactive']" /> --}}
 
-                            {{-- @include('layouts.form.inputs.select-model', ['var' => [
-                                'name'        => 'category_id',
-                                'label'       => 'Category',
-                                'value'       => $record?->category_id,
-                                'div'         => 'col-md-6',
-                                'required'    => true,
-                                'model'       => \App\Models\Category::class,
-                                'option_id'   => 'id',
-                                'option_name' => 'name',
-                            ]]) --}}
+                            {{-- <x-form.select-model name="category_id"
+                                                 label="Category"
+                                                 col="col-md-6"
+                                                 required
+                                                 :model="\App\Models\Category::class"
+                                                 option-id="id"
+                                                 option-name="name" /> --}}
 
-                            {{-- @include('layouts.form.inputs.date', ['var' => [
-                                'name'  => 'date',
-                                'label' => 'Date',
-                                'value' => $record?->date,
-                                'div'   => 'col-md-6',
-                            ]]) --}}
+                            {{-- <x-form.input name="date" type="date" label="Date" col="col-md-6" /> --}}
 
-                            {{-- @include('layouts.form.inputs.number', ['var' => [
-                                'name'  => 'amount',
-                                'label' => 'Amount',
-                                'value' => $record?->amount,
-                                'div'   => 'col-md-6',
-                            ]]) --}}
+                            {{-- <x-form.input name="amount" type="number" label="Amount" col="col-md-6" /> --}}
 
-                            {{-- @include('layouts.form.inputs.switch', ['var' => [
-                                'name'  => 'is_active',
-                                'label' => 'Active',
-                                'value' => $record?->is_active ?? true,
-                                'div'   => 'col-md-6',
-                            ]]) --}}
+                            {{-- <x-form.switch name="is_active" label="Active" col="col-md-6" /> --}}
 
-                            {{-- @include('layouts.form.inputs.media-file', ['var' => [
-                                'name'       => 'image',
-                                'label'      => 'Image',
-                                'value'      => $record?->getFirstMediaUrl('image'),
-                                'div'        => 'col-md-12',
-                                'collection' => 'image',
-                            ]]) --}}
+                            {{-- <x-form.media-file name="image"
+                                               label="Image"
+                                               collection="image"
+                                               col="col-md-12" /> --}}
 
                         </div>
                     </div>
 
                     @include('layouts.form.includes.footer', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
-                </form>
+                </x-form>
             </div>
         </div>
 
@@ -127,8 +85,6 @@
             @if($editing)
                 @include('layouts.form.includes.audits', ['element' => $record])
                 @include('layouts.form.includes.delete-warning', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
-            @else
-                @include('layouts.form.includes.information', ['element' => $record, 'module' => $moduleName, 'moduleTitle' => $moduleTitle])
             @endif
         </div>
     </div>

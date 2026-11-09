@@ -4,6 +4,7 @@ namespace Sanjid29\StarterCore\Http\Controllers;
 
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -52,10 +53,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  *    resources/views/{module}/report/index.blade.php   — filter inputs  (required)
  *    resources/views/{module}/report/print.blade.php   — print override (optional)
  *
- *  Example for leave types:
- *    $viewPath = 'leave-types.report'
- *    → resources/views/leave-types/report/index.blade.php   (filter inputs)
- *    → resources/views/leave-types/report/print.blade.php   (optional)
+ *  Example for post categories:
+ *    $viewPath = 'post-categories.report'
+ *    → resources/views/post-categories/report/index.blade.php   (filter inputs)
+ *    → resources/views/post-categories/report/print.blade.php   (optional)
  *
  * ─── Supported URL parameters ────────────────────────────────────────────
  *
@@ -85,8 +86,8 @@ abstract class BaseReportController extends Controller
      * The engine renders {viewPath}.index.
      *
      * Follows the pattern: {module}.report
-     * Example: protected string $viewPath = 'leave-types.report';
-     * Maps to: resources/views/leave-types/report/index.blade.php
+     * Example: protected string $viewPath = 'post-categories.report';
+     * Maps to: resources/views/post-categories/report/index.blade.php
      */
     protected string $viewPath;
 
@@ -96,8 +97,8 @@ abstract class BaseReportController extends Controller
      * Defaults to the shared base: resources/views/report/includes/print.blade.php
      *
      * Override in a child to use a module-specific print view that extends the base:
-     *   protected string $printView = 'leave-types.report.print';
-     *   → resources/views/leave-types/report/print.blade.php
+     *   protected string $printView = 'post-categories.report.print';
+     *   → resources/views/post-categories/report/print.blade.php
      */
     protected string $printView = 'report.includes.print';
 
@@ -204,7 +205,9 @@ abstract class BaseReportController extends Controller
             return 'json';
         }
 
-        return $this->request->input('ret', 'html');
+        $type = $this->request->input('ret', 'html');
+
+        return is_string($type) ? $type : 'html';
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -239,13 +242,17 @@ abstract class BaseReportController extends Controller
 
     /**
      * All columns available in the column picker.
-     * = (real table columns − excluded) + ghost columns
+     * = (real table columns − excluded − the model's $hidden) + ghost columns
      *
      * @return array<int, string>
      */
     public function columnOptions(): array
     {
-        $visible = array_diff($this->tableColumns(), $this->excludedColumns());
+        $visible = array_diff(
+            $this->tableColumns(),
+            $this->excludedColumns(),
+            (new $this->modelClass)->getHidden(),
+        );
 
         return array_values(array_unique(array_merge($visible, $this->ghostColumns())));
     }
@@ -264,17 +271,30 @@ abstract class BaseReportController extends Controller
 
     /**
      * Columns shown by default when no ?columns_csv= is provided.
-     * Override in the child to change the default column set.
+     * Override in the child to change the default column set, and call
+     * requestedColumns() first, so a request can't select any other column.
      *
      * @return array<int, string>
      */
     public function selectedColumns(): array
     {
-        if ($this->request->filled('columns_csv')) {
-            return $this->csvToArray($this->request->input('columns_csv'));
+        return $this->requestedColumns() ?: $this->columnOptions();
+    }
+
+    /**
+     * The columns named in ?columns_csv=, limited to those in the column picker.
+     *
+     * @return array<int, string>
+     */
+    protected function requestedColumns(): array
+    {
+        $requested = $this->request->input('columns_csv');
+
+        if (! is_string($requested)) {
+            return [];
         }
 
-        return $this->columnOptions();
+        return array_values(array_intersect($this->csvToArray($requested), $this->columnOptions()));
     }
 
     /**
@@ -299,7 +319,7 @@ abstract class BaseReportController extends Controller
         // Use user-supplied aliases only when they are non-empty.
         // An empty submission (user cleared all tags) falls back to defaults.
         $raw = $this->request->input('alias_columns_csv', '');
-        if ($raw !== '' && $this->request->filled('alias_columns_csv')) {
+        if (is_string($raw) && $raw !== '') {
             $aliases = $this->csvToArray($raw);
         } else {
             $aliases = [];
@@ -392,8 +412,12 @@ abstract class BaseReportController extends Controller
     {
         $value = $this->request->input('rows_per_page', $this->rowsPerPage);
 
-        if (strtolower((string) $value) === 'all') {
+        if (is_string($value) && strtolower($value) === 'all') {
             return max($this->total(), 1);
+        }
+
+        if (! is_numeric($value) || (int) $value < 1) {
+            return $this->rowsPerPage;
         }
 
         return (int) $value;
@@ -426,14 +450,16 @@ abstract class BaseReportController extends Controller
                 continue;
             }
 
-            if ($this->isFromRange($field)) {
-                $query = $this->applyFromRange($query, $field, $value);
+            $isRange = ! in_array($field, $tableColumns) && ($this->isFromRange($field) || $this->isToRange($field));
 
-                continue;
-            }
+            if ($isRange) {
+                if (! is_string($value) || ! in_array($this->stripRangeSuffix($field), $tableColumns)) {
+                    continue;
+                }
 
-            if ($this->isToRange($field)) {
-                $query = $this->applyToRange($query, $field, $value);
+                $query = $this->isFromRange($field)
+                    ? $this->applyFromRange($query, $field, $value)
+                    : $this->applyToRange($query, $field, $value);
 
                 continue;
             }
@@ -477,7 +503,9 @@ abstract class BaseReportController extends Controller
         }
 
         // Keyword search across $searchFields
-        if ($key = $this->request->input('search_key')) {
+        $key = $this->request->input('search_key');
+
+        if (is_string($key) && $key !== '') {
             $query->where(function (Builder $q) use ($key) {
                 foreach ($this->searchFields as $field) {
                     if (! in_array($field, $this->tableColumns())) {
@@ -499,7 +527,11 @@ abstract class BaseReportController extends Controller
      */
     protected function applyFromRange(Builder $query, string $field, string $value): Builder
     {
-        $dateTime = Carbon::parse($value);
+        $dateTime = $this->parseRangeDate($value);
+
+        if ($dateTime === null) {
+            return $query;
+        }
 
         if (strlen($value) <= 10) {
             $dateTime->startOfDay();
@@ -516,13 +548,29 @@ abstract class BaseReportController extends Controller
      */
     protected function applyToRange(Builder $query, string $field, string $value): Builder
     {
-        $dateTime = Carbon::parse($value);
+        $dateTime = $this->parseRangeDate($value);
+
+        if ($dateTime === null) {
+            return $query;
+        }
 
         if (strlen($value) <= 10) {
             $dateTime->endOfDay();
         }
 
         return $query->where($this->stripRangeSuffix($field), '<=', $dateTime);
+    }
+
+    /**
+     * Parse a date-range value, returning null when it isn't a date, so the filter is skipped.
+     */
+    protected function parseRangeDate(string $value): ?Carbon
+    {
+        try {
+            return Carbon::parse($value);
+        } catch (InvalidFormatException) {
+            return null;
+        }
     }
 
     /**
@@ -568,7 +616,8 @@ abstract class BaseReportController extends Controller
      */
     protected function applyOrderBy(Builder $query): Builder
     {
-        $orderBy = trim((string) $this->request->input('order_by', ''));
+        $orderBy = $this->request->input('order_by', '');
+        $orderBy = is_string($orderBy) ? trim($orderBy) : '';
 
         if (empty($orderBy)) {
             return $query;
@@ -576,10 +625,10 @@ abstract class BaseReportController extends Controller
 
         $parts = preg_split('/\s+/', $orderBy, 2);
         $column = $parts[0] ?? '';
-        $direction = strtoupper($parts[1] ?? 'ASC');
+        $direction = strtolower($parts[1] ?? 'asc');
 
-        if (! in_array($direction, ['ASC', 'DESC'])) {
-            $direction = 'ASC';
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'asc';
         }
 
         if (in_array($column, $this->tableColumns())) {
@@ -839,7 +888,7 @@ abstract class BaseReportController extends Controller
      *   public function renderCell(string $column, object $row): string
      *   {
      *       if ($column === 'name') {
-     *           return '<a href="' . route('leave-types.show', $row->id) . '">'
+     *           return '<a href="' . route('post-categories.show', $row->id) . '">'
      *               . e($row->name) . '</a>';
      *       }
      *       return parent::renderCell($column, $row);
