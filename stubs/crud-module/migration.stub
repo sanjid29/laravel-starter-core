@@ -24,6 +24,8 @@ return new class extends Migration
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
+        // NOTE: tags each permission with a `module` value — the host app's Spatie
+        // `permissions` table must have a nullable `module` column for this to work.
         collect(['{module-names}.view-grid', '{module-names}.view', '{module-names}.create', '{module-names}.update', '{module-names}.delete', '{module-names}.restore', '{module-names}.force-delete', '{module-names}.report'])
             ->each(fn (string $name) => Permission::firstOrCreate(
                 ['name' => $name, 'guard_name' => 'web'],

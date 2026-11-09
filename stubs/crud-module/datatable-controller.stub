@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class {ModuleName}DataTableController extends BaseDataTableController
 {
-    protected array $rawColumns = ['updated_at', 'updated_by'];
+    // Add column keys here only when their dataTableColumns() output contains HTML.
+    // Raw columns are NOT escaped — plain-text columns (dates, names) must stay out.
+    protected array $rawColumns = [];
 
     public function __construct()
     {
@@ -29,6 +31,15 @@ class {ModuleName}DataTableController extends BaseDataTableController
             'updated_at' => fn ({ModuleName} ${moduleName}) => ${moduleName}->updated_at?->format('M d, Y H:i') ?? '—',
             'updated_by' => fn ({ModuleName} ${moduleName}) => ${moduleName}->updatedBy?->name ?? '—',
         ];
+    }
+
+    // ── Clean REST JSON API (GET {module-names}.json) ───────────────────────
+    // Defaults to the non-HTML columns from tableColumns(). Override to control
+    // exactly what the public/API feed exposes — this list is the whitelist.
+
+    protected function jsonFields(): array
+    {
+        return ['id', 'name'];
     }
 
     protected function actionColumn(${moduleName}): string

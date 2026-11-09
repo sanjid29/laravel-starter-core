@@ -26,6 +26,23 @@ Core infrastructure package for the Laravel Starter Kit. Provides base controlle
 | `RemoveCrudModule` | `src/Console/Commands/RemoveCrudModule.php` | `remove:crud-module` Artisan command |
 | `MakeService` | `src/Console/Commands/MakeService.php` | `make:service` Artisan command |
 
+## Requirements
+
+This package is designed to sit inside a host Laravel app that meets the following expectations. Most are satisfied by the [Laravel Starter Kit](https://github.com/sanjid29/stater-kit); if you install the package standalone, wire these up yourself:
+
+| Requirement | Needed for | Notes |
+|-------------|-----------|-------|
+| PHP 8.4+, Laravel 12 or 13 | Everything | See `composer.json`. Tested against both on CI. |
+| `spatie/laravel-permission` with a **`module` column** on the `permissions` table | `make:crud-module` migrations | Generated migrations tag each permission with `['module' => '{kebab}']`. Add a nullable `module` column to the Spatie `permissions` table (a published-migration tweak), or the seeding `firstOrCreate` will fail. |
+| A **`Superuser`** role (or your configured `superuser_role`) | Gate / policy bypass | `Gate::before` and `BasePolicy::before` grant this role everything. |
+| The **`throttle:api`** rate limiter | `Route::crudModule(..., public: true)` | Ships in Laravel's default skeleton (`bootstrap/app.php` / `RouteServiceProvider`). Define it if you've removed it. |
+| **Bootstrap 5 + Bootstrap Icons** front-end | Generated views & DataTable action columns | Action buttons emit `btn`/`bi bi-*` markup. |
+| Host layout views `layouts.form.index` and `layouts.form.recycle-bin` | `BaseController` index / recycle-bin fallbacks | Used when a module doesn't supply its own `{viewPrefix}.index` / `.recycle-bin`. |
+| `created_by` / `updated_by` / `deleted_by` + `deleted_at` columns | `HasAuditFields`, `SoftDeletes` | The generated migration already includes these — add them to any hand-written tables that use the traits. |
+| A `setting()` helper (optional) | `feature:` middleware | When present it overrides `config('starter-core.features.*')`; otherwise the config fallback is used. |
+
+---
+
 ## Installation
 
 ```bash
@@ -103,27 +120,31 @@ Route::crudModule(
     string $prefix,
     string $controller,
     ?string $dtController = null,
-    ?\Closure $extras = null
+    ?\Closure $extras = null,
+    bool $public = false
 ): void
 ```
 
-Registers a full set of routes under `$prefix`, each guarded by the matching `{prefix}.{action}` Spatie permission:
+Registers a full set of routes under `$prefix`. The whole group is guarded by `permission:{prefix}.view`, and write/destructive actions add the matching `{prefix}.{action}` permission on top:
 
 | Route | Permission |
 |-------|-----------|
-| `GET /` (index) | `{prefix}.view-grid` |
-| `GET /datatable` | `{prefix}.view-grid` |
+| `GET /` (index) | `{prefix}.view` + `{prefix}.view-grid` |
+| `GET /datatable` (DataTables JSON) | `{prefix}.view` + `{prefix}.view-grid` |
 | `GET /create` | `{prefix}.create` |
 | `POST /` (store) | `{prefix}.create` |
 | `GET /{record}` (show) | `{prefix}.view` |
 | `GET /{record}/edit` | `{prefix}.update` |
 | `PUT /{record}` (update) | `{prefix}.update` |
 | `DELETE /{record}` (destroy) | `{prefix}.delete` |
-| `GET /select` (Ajax options) | *(none)* |
+| `GET /select` (Select2 / AJAX search) | `{prefix}.view` |
+| `GET /json` (clean REST feed) | `{prefix}.view` + `{prefix}.view-grid` |
 | `GET /recycle-bin` | `{prefix}.restore` |
 | `GET /recycle-bin/datatable` | `{prefix}.restore` |
 | `POST /{record}/restore` | `{prefix}.restore` |
 | `DELETE /{record}/force-delete` | `{prefix}.force-delete` |
+
+`GET /json` is only registered when a `$dtController` is passed (it lives on the DataTable controller).
 
 Extra static routes passed via `$extras` are registered **before** the `/{record}` wildcard.
 
@@ -136,6 +157,17 @@ Route::crudModule('posts', PostController::class, PostDataTableController::class
         ->middleware('permission:posts.report');
 });
 ```
+
+#### Public read endpoints — `public: true`
+
+The flag exposes **only** the two read feeds — `GET /select` and `GET /json` — without permission checks, behind the `throttle:api` rate limiter. **Every other action (create, store, update, destroy, recycle-bin, …) stays permission-guarded exactly as above** — `public` never unlocks writes.
+
+```php
+// posts.select + posts.json become public (throttle:api); everything else stays guarded
+Route::crudModule('posts', PostController::class, PostDataTableController::class, public: true);
+```
+
+Only the attributes a module explicitly whitelists via [`selectFields()`](#select2--ajax-search) and [`jsonFields()`](#clean-rest-json-api) are ever serialized — so a public feed exposes exactly what you list, nothing more. Keep those lists minimal on public modules. `throttle:api` assumes the host app defines that rate limiter (it ships in Laravel's default skeleton).
 
 ---
 
@@ -174,6 +206,55 @@ When a `$service` is wired, `transformStoreData/transformUpdateData` and `afterS
 
 **File uploads** — handled automatically when `$request->hasFile(...)`. Integrates with Spatie MediaLibrary and `Storage`.
 
+#### Select2 / AJAX search
+
+`GET /select` powers Select2 / AJAX dropdowns. It returns Select2's native shape with multi-column search, infinite-scroll pagination and a field whitelist:
+
+```json
+{
+  "results": [ { "id": 1, "name": "Acme Ltd.", "text": "Acme Ltd." } ],
+  "pagination": { "more": true }
+}
+```
+
+Query parameters: `q` (search term), `page`, `per_page` (capped at `$selectLimit`). `id` and `text` are always added, so Select2 works with no front-end mapping.
+
+**Quick config** (single-column label, the common case):
+
+```php
+protected string $selectLabelColumn  = 'name'; // the returned field + Select2 `text`
+protected string $selectSearchColumn = 'name'; // column searched by `q`
+protected int    $selectLimit        = 20;     // max page size
+```
+
+**Override points** for more control:
+
+```php
+// Columns searched (OR, LIKE) against `q`
+protected function selectSearchColumns(): array { return ['name', 'email', 'code']; }
+
+// Attribute whitelist returned per result — this is the security boundary.
+// id + text are added automatically.
+protected function selectFields(): array { return ['id', 'name', 'email']; }
+
+// Build the Select2 label (`text`) — any computed string, not just a column
+protected function selectLabel(Model $record): string
+{
+    return "{$record->code} — {$record->name}";
+}
+
+// Scope the base query (active only, tenant filtering, …)
+protected function selectQuery(Builder $query): Builder
+{
+    return $query->where('is_active', true);
+}
+```
+
+- `selectFields()` = **what data comes back** (the whitelist).
+- `selectLabel()` = **what the human sees** in the option (`text`).
+
+Defaults are derived from `$selectLabelColumn` / `$selectSearchColumn`, so setting those is enough for simple cases.
+
 ---
 
 ### `BaseDataTableController`
@@ -192,10 +273,51 @@ protected array $rawColumns = ['action', 'status'];
 ```php
 protected function indexQuery(): Builder {}          // base query
 protected function dataTableColumns(): array {}      // DataTables column definitions
-protected function applyFilters(Builder $query): Builder {}
-protected function actionColumn(): string {}         // action button HTML
+protected function applyFilters(EloquentDataTable $dt, Request $request): EloquentDataTable {}
+protected function actionColumn(mixed $record): string {} // action button HTML
 protected function tableColumns(): array {}          // visible column list for the view
 ```
+
+#### Clean REST JSON API
+
+`GET /json` returns a clean, paginated feed **decoupled from the DataTables envelope** — no `draw`/`recordsTotal`, no HTML action columns. It reuses `indexQuery()`, so the public feed and the admin grid can never drift apart. Ideal for public pages or external API consumers.
+
+```json
+{
+  "data": [ { "id": 1, "name": "Acme" } ],
+  "meta": { "current_page": 1, "per_page": 15, "total": 42, "last_page": 3 },
+  "links": { "first": "…?page=1", "last": "…?page=3", "prev": null, "next": "…?page=2" }
+}
+```
+
+Query parameters: `q` (search), `sort` + `direction` (`asc`/`desc`, whitelisted), `page`, `per_page` (capped at `$jsonMaxPerPage`, default `$jsonDefaultPerPage`).
+
+**Override points:**
+
+```php
+// Attribute whitelist returned per row — the security boundary. Defaults to the
+// non-HTML columns from tableColumns(). Supports dot-paths for eager-loaded
+// relations, e.g. 'category.name' (resolved via data_get()).
+protected function jsonFields(): array { return ['id', 'name', 'category.name']; }
+
+// Columns searched (OR, LIKE) by `q`. Relation dot-paths are excluded by default.
+protected function jsonSearchColumns(): array { return ['name']; }
+
+// Columns the client may sort by (?sort=&direction=)
+protected function jsonSortableColumns(): array { return ['name', 'created_at']; }
+
+// Custom serialization (casts, computed values, nested resources)
+protected function jsonResource(mixed $record): array { return [...]; }
+
+// Builder-level filters — status/date-range, or relation search via whereHas()
+protected function applyApiFilters(Builder $query, Request $request): Builder { return $query; }
+
+// Page-size tuning
+protected int $jsonDefaultPerPage = 15;
+protected int $jsonMaxPerPage     = 100;
+```
+
+> Default search/sort exclude relation (dot-path) columns, since you can't `orWhere`/`orderBy` them directly — handle those in `applyApiFilters()` with `whereHas()`. On a module exposed with `public: true`, `jsonFields()` is your public surface; the generated stub pins it to `['id', 'name']` so you widen it deliberately.
 
 ---
 
@@ -298,7 +420,7 @@ class PostObserver extends BaseObserver
 
 | Trait | What it does |
 |-------|-------------|
-| `HasUuid` | Generates `uuid` on `creating`; sets `$primaryKey` and disables auto-increment |
+| `HasUuid` | Generates a `uuid` value on `creating`. The model keeps its auto-increment `id` as primary key — `uuid` is a secondary unique column |
 | `HasAuditFields` | Adds `created_by`, `updated_by`, `deleted_by` to `$appends`; provides `createdBy()`, `updatedBy()`, `deletedBy()` BelongsTo relations |
 | `HasActivityLog` | Configures Spatie Activity Log with `logOnlyDirty()` and `dontSubmitEmptyLogs()` |
 | `HasTags` | Tagify-compatible tag storage and retrieval via `associables` |

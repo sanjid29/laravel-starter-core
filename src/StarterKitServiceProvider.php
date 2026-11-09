@@ -58,12 +58,29 @@ class StarterKitServiceProvider extends ServiceProvider
             string $prefix,
             string $controller,
             ?string $dtController = null,
-            ?\Closure $extras = null
+            ?\Closure $extras = null,
+            bool $public = false
         ): void {
+            // Public read endpoints (Select2 + REST JSON) — throttled, no permission.
+            // Only what each module explicitly whitelists via selectFields()/jsonFields()
+            // is exposed. Opt in with: Route::crudModule(..., public: true).
+            if ($public) {
+                Route::prefix($prefix)
+                    ->name($prefix.'.')
+                    ->middleware('throttle:api')
+                    ->group(function () use ($controller, $dtController): void {
+                        Route::get('/select', [$controller, 'selectOptions'])->name('select');
+
+                        if ($dtController) {
+                            Route::get('/json', [$dtController, 'json'])->name('json');
+                        }
+                    });
+            }
+
             Route::prefix($prefix)
                 ->name($prefix.'.')
                 ->middleware("permission:{$prefix}.view")
-                ->group(function () use ($controller, $dtController, $prefix, $extras): void {
+                ->group(function () use ($controller, $dtController, $prefix, $extras, $public): void {
                     if ($dtController) {
                         Route::get('/datatable', [$dtController, 'datatable'])
                             ->name('datatable')
@@ -82,8 +99,17 @@ class StarterKitServiceProvider extends ServiceProvider
                         ->name('store')
                         ->middleware("permission:{$prefix}.create");
 
-                    Route::get('/select', [$controller, 'selectOptions'])
-                        ->name('select');
+                    // Guarded read endpoints — registered here unless publicly exposed above.
+                    if (! $public) {
+                        Route::get('/select', [$controller, 'selectOptions'])
+                            ->name('select');
+
+                        if ($dtController) {
+                            Route::get('/json', [$dtController, 'json'])
+                                ->name('json')
+                                ->middleware("permission:{$prefix}.view-grid");
+                        }
+                    }
 
                     // Recycle bin — static paths must come before {record} wildcard
                     Route::get('/recycle-bin', [$controller, 'recycleBin'])

@@ -2,6 +2,7 @@
 
 namespace Sanjid29\StarterCore\Http\Controllers;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Http\FormRequest;
@@ -26,6 +27,7 @@ abstract class BaseController extends Controller
 
     protected string $resourceName;
 
+    /** @var class-string<Model> */
     protected string $model;
 
     protected string $selectSearchColumn = 'name';
@@ -360,20 +362,77 @@ abstract class BaseController extends Controller
         return $this->redirectAfterUpdate($model);
     }
 
+    // ─────────────────────────────────────────────
+    // Select2 / AJAX search — overridable hooks
+    // ─────────────────────────────────────────────
+
+    /**
+     * Columns searched (OR) against the `q` term.
+     * Defaults to the single $selectSearchColumn for backward compatibility.
+     *
+     * @return array<int, string>
+     */
+    protected function selectSearchColumns(): array
+    {
+        return [$this->selectSearchColumn];
+    }
+
+    /**
+     * Attribute whitelist returned per result. This is the security boundary —
+     * only these keys are serialized. `id` and `text` are always added.
+     *
+     * @return array<int, string>
+     */
+    protected function selectFields(): array
+    {
+        return ['id', $this->selectLabelColumn];
+    }
+
+    /**
+     * Builds the Select2 `text` label for a result row.
+     */
+    protected function selectLabel(Model $record): string
+    {
+        return (string) $record->{$this->selectLabelColumn};
+    }
+
+    /**
+     * Scope the base query (e.g. only active records, tenant filtering).
+     */
+    protected function selectQuery(Builder $query): Builder
+    {
+        return $query;
+    }
+
+    /**
+     * Select2-native AJAX endpoint: { results: [...], pagination: { more } }.
+     * Supports multi-column search, field whitelisting and infinite scroll.
+     */
     public function selectOptions(Request $request): JsonResponse
     {
-        $results = ($this->model)::query()
-            ->when($request->string('q')->trim()->isNotEmpty(), fn ($q) => $q->where(
-                $this->selectSearchColumn, 'like', '%'.$request->string('q')->trim().'%'
-            ))
-            ->limit($this->selectLimit)
-            ->get(['id', $this->selectLabelColumn])
-            ->map(fn ($item) => [
-                'id' => $item->id,
-                'text' => $item->{$this->selectLabelColumn},
-            ]);
+        $term = $request->string('q')->trim()->value();
+        $perPage = min($this->selectLimit, max(1, $request->integer('per_page', $this->selectLimit)));
 
-        return response()->json($results);
+        $query = $this->selectQuery(($this->model)::query())
+            ->when($term !== '', function (Builder $q) use ($term): void {
+                $q->where(function (Builder $sub) use ($term): void {
+                    foreach ($this->selectSearchColumns() as $column) {
+                        $sub->orWhere($column, 'like', "%{$term}%");
+                    }
+                });
+            });
+
+        $paginator = $query->paginate($perPage);
+
+        $results = $paginator->getCollection()->map(fn (Model $record): array => array_merge(
+            $record->only($this->selectFields()),
+            ['id' => $record->getKey(), 'text' => $this->selectLabel($record)],
+        ))->all();
+
+        return response()->json([
+            'results' => $results,
+            'pagination' => ['more' => $paginator->hasMorePages()],
+        ]);
     }
 
     public function recycleBin(): View

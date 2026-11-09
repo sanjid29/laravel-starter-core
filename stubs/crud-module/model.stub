@@ -14,18 +14,13 @@ class {ModuleName} extends Model
 {
     use HasActivityLog, HasAuditFields, HasFactory, HasUuid, SoftDeletes;
 
+    // Only user-supplied business columns belong here. uuid is set by HasUuid;
+    // created_by/updated_by/deleted_by by HasAuditFields; timestamps & deleted_at
+    // by Eloquent/SoftDeletes. Keeping those out of $fillable prevents spoofing.
     protected $fillable = [
-        'id',
-        'uuid',
         'name',
         'title',
         'name_ext',
-        'created_by',
-        'created_at',
-        'updated_by',
-        'updated_at',
-        'deleted_by',
-        'deleted_at',
     ];
 
     public function casts(): array
