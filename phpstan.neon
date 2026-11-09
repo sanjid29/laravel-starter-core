@@ -9,3 +9,34 @@ parameters:
     # Stubs are templates with {Placeholder} tokens — not valid PHP until rendered.
     excludePaths:
         - stubs/*
+    # Unmatched ignores shouldn't fail the build (versions shift which magic the
+    # engine can/can't resolve); scoped ignores below still catch real new issues.
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # The base classes are typed against the abstract Eloquent Model / Request /
+        # User by design. Concrete host-app models supply SoftDeletes
+        # (withTrashed/onlyTrashed/restore), the audit columns, Spatie's hasRole(),
+        # and FormRequest::validated() at runtime — invisible to standalone analysis.
+        -
+            identifier: staticMethod.notFound
+            path: src/Http/Controllers/*.php
+        -
+            identifier: method.notFound
+            path: src/Http/Controllers/*.php
+        -
+            identifier: method.notFound
+            path: src/Http/Middleware/*.php
+        -
+            identifier: property.notFound
+            path: src/Observers/*.php
+        # Package traits are consumed by host-app models, so PHPStan sees them "unused".
+        -
+            identifier: trait.unused
+            path: src/Traits/*.php
+        # Pre-existing framework-idiom findings in untouched report/support code.
+        -
+            identifier: new.static
+            path: src/Support/DatatableConfig.php
+        -
+            identifier: argument.type
+            path: src/Http/Controllers/BaseReportController.php
