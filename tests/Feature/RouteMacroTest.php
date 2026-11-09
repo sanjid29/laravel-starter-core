@@ -10,10 +10,27 @@ use Sanjid29\StarterCore\Tests\TestCase;
 
 class RouteMacroTest extends TestCase
 {
+    /**
+     * Register a module and refresh the router's name lookup. Routes are added to
+     * the collection before ->name() is chained on, so the name list is stale
+     * until refreshed — needed for Route::has()/getByName() to resolve them.
+     */
+    private function registerModule(string $prefix, bool $public = false, bool $withDataTable = true): void
+    {
+        Route::crudModule(
+            $prefix,
+            WidgetController::class,
+            $withDataTable ? WidgetDataTableController::class : null,
+            public: $public,
+        );
+
+        $this->app['router']->getRoutes()->refreshNameLookup();
+    }
+
     #[Test]
     public function it_registers_the_full_set_of_named_routes(): void
     {
-        Route::crudModule('widgets', WidgetController::class, WidgetDataTableController::class);
+        $this->registerModule('widgets');
 
         $expected = [
             'index', 'create', 'store', 'show', 'edit', 'update', 'destroy',
@@ -29,7 +46,7 @@ class RouteMacroTest extends TestCase
     #[Test]
     public function destructive_routes_are_permission_guarded(): void
     {
-        Route::crudModule('widgets', WidgetController::class, WidgetDataTableController::class);
+        $this->registerModule('widgets');
 
         $middleware = Route::getRoutes()->getByName('widgets.destroy')->gatherMiddleware();
 
@@ -39,7 +56,7 @@ class RouteMacroTest extends TestCase
     #[Test]
     public function select_is_guarded_by_view_permission_by_default(): void
     {
-        Route::crudModule('widgets', WidgetController::class, WidgetDataTableController::class);
+        $this->registerModule('widgets');
 
         $middleware = Route::getRoutes()->getByName('widgets.select')->gatherMiddleware();
 
@@ -50,7 +67,7 @@ class RouteMacroTest extends TestCase
     #[Test]
     public function public_flag_exposes_select_and_json_behind_throttle_without_permission(): void
     {
-        Route::crudModule('gadgets', WidgetController::class, WidgetDataTableController::class, public: true);
+        $this->registerModule('gadgets', public: true);
 
         $select = Route::getRoutes()->getByName('gadgets.select')->gatherMiddleware();
         $json = Route::getRoutes()->getByName('gadgets.json')->gatherMiddleware();
@@ -65,7 +82,7 @@ class RouteMacroTest extends TestCase
     #[Test]
     public function json_route_is_only_registered_when_a_datatable_controller_is_given(): void
     {
-        Route::crudModule('thingers', WidgetController::class);
+        $this->registerModule('thingers', withDataTable: false);
 
         $this->assertTrue(Route::has('thingers.index'));
         $this->assertFalse(Route::has('thingers.json'));
