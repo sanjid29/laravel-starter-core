@@ -1,0 +1,13 @@
+# Keep release archives (composer dist) lean — exclude dev-only files.
+/tests              export-ignore
+/.github            export-ignore
+/.idea              export-ignore
+/.gitignore         export-ignore
+/.gitattributes     export-ignore
+/.editorconfig      export-ignore
+/phpunit.xml.dist   export-ignore
+/pint.json          export-ignore
+/phpstan.neon       export-ignore
+/CHANGELOG.md       export-ignore
+
+*.stub linguist-language=PHP

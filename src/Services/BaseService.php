@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 abstract class BaseService
 {
+    /** @var class-string<Model> */
     protected string $modelClass;
 
     /** Declare always-immutable fields in child services */

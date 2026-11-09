@@ -24,6 +24,25 @@ class {ModuleName}Controller extends BaseController
         return {ModuleName}Request::class;
     }
 
+    // ── Select2 / AJAX search (GET {module-names}.select) ───────────────────
+    // Uncomment and tailor to control what the dropdown searches and returns.
+    // Only the keys listed in selectFields() are serialized (the whitelist).
+
+    // protected function selectSearchColumns(): array
+    // {
+    //     return ['name'];
+    // }
+
+    // protected function selectFields(): array
+    // {
+    //     return ['id', 'name'];
+    // }
+
+    // protected function selectLabel(\Illuminate\Database\Eloquent\Model $record): string
+    // {
+    //     return (string) $record->name;
+    // }
+
     public function show(int|string $record): View
     {
         ${moduleName} = $this->findRecord($record);

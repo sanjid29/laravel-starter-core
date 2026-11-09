@@ -132,7 +132,7 @@ class MakeCrudModule extends Command
 
         $this->line('  <fg=cyan>1. Run the migration:</>');
         $this->line('     php artisan migrate');
-        $this->line("     <fg=gray>// Permissions created: {$kebab}.view, {$kebab}.create, {$kebab}.update, {$kebab}.delete, {$kebab}.report</>");
+        $this->line("     <fg=gray>// Permissions created: {$kebab}.view-grid, {$kebab}.view, {$kebab}.create, {$kebab}.update, {$kebab}.delete, {$kebab}.restore, {$kebab}.force-delete, {$kebab}.report</>");
         $this->newLine();
 
         $this->line('  <fg=cyan>2. Add your columns to $fillable (and casts) in the Model.</>');
