@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\ReportController;
 
-use Sanjid29\StarterCore\Http\Controllers\BaseReportController;
 use App\Models\{ModuleName};
 use Illuminate\Database\Eloquent\Builder;
+use Sanjid29\StarterCore\Http\Controllers\BaseReportController;
 
 class {ModuleName}ReportController extends BaseReportController
 {
@@ -25,8 +25,6 @@ class {ModuleName}ReportController extends BaseReportController
 
     public function __invoke(): mixed
     {
-        $this->authorize('viewAny', {ModuleName}::class);
-
         return $this->output();
     }
 
@@ -51,11 +49,7 @@ class {ModuleName}ReportController extends BaseReportController
 
     public function selectedColumns(): array
     {
-        if ($this->request->filled('columns_csv')) {
-            return $this->csvToArray($this->request->input('columns_csv'));
-        }
-
-        return [
+        return $this->requestedColumns() ?: [
             'serial',
             'id',
             'name',

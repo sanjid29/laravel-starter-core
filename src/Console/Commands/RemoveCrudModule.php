@@ -130,13 +130,11 @@ class RemoveCrudModule extends Command
 
         $migrations = glob(base_path("database/migrations/*_create_{$snake}_table.php")) ?: [];
 
-        $permissions = [
-            "{$kebab}.view",
-            "{$kebab}.create",
-            "{$kebab}.update",
-            "{$kebab}.delete",
-            "{$kebab}.report",
-        ];
+        $permissions = Permission::where('module', $kebab)
+            ->orWhere('name', 'like', "{$kebab}.%")
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
 
         $rowCount = Schema::hasTable($snake) ? (int) DB::table($snake)->count() : 0;
 
@@ -199,10 +197,12 @@ class RemoveCrudModule extends Command
 
         $this->newLine();
         $this->line('  <fg=cyan>Permissions:</>');
+        if (empty($inventory['permissions'])) {
+            $this->line('    [<fg=gray>SKIP  </>]  no permissions found');
+        }
+
         foreach ($inventory['permissions'] as $permission) {
-            $exists = Permission::where('name', $permission)->exists();
-            $tag = $exists ? '<fg=red>DELETE</>' : '<fg=gray>SKIP  </>';
-            $this->line("    [{$tag}]  {$permission}");
+            $this->line("    [<fg=red>DELETE</>]  {$permission}");
         }
 
         $this->newLine();
@@ -271,16 +271,12 @@ class RemoveCrudModule extends Command
     /** @param  array<string>  $permissions */
     private function removePermissions(array $permissions): void
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
         foreach ($permissions as $name) {
-            $deleted = Permission::where('name', $name)->delete();
-            if ($deleted) {
-                $this->line("  <fg=red>DELETED</> permission \"{$name}\"");
-            } else {
-                $this->line("  <fg=gray>SKIP   </> permission \"{$name}\" not found");
-            }
+            Permission::where('name', $name)->delete();
+            $this->line("  <fg=red>DELETED</> permission \"{$name}\"");
         }
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
     }
 
     private function printManualCleanup(): void
@@ -305,7 +301,9 @@ class RemoveCrudModule extends Command
         $this->line("     use App\\Http\\Controllers\\ReportController\\{$module}ReportController;");
         $this->newLine();
 
-        $this->line('  <fg=cyan>3. Remove the sidebar link from resources/views/layouts/dashboard/partials/sidebar.blade.php</>');
+        $this->line('  <fg=cyan>3. Remove the sidebar links from both sidebars:</>');
+        $this->line('     resources/views/layouts/dashboard/includes/sidebar.blade.php');
+        $this->line('     resources/views/dashboards/includes/sidebar/superuser.blade.php');
         $this->newLine();
     }
 

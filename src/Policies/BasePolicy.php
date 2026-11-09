@@ -4,63 +4,41 @@ namespace Sanjid29\StarterCore\Policies;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Routes check whether someone may do an action at all, with a `permission:`
+ * middleware. A policy only decides whether that action is allowed on one
+ * particular record, such as a user stronger than the person asking.
+ *
+ * Everything is allowed by default, so `can('update', $record)` doesn't mean the
+ * person holds the update permission. To decide whether to show a button, check
+ * both: `can('tags.update') && can('update', $tag)`.
+ *
+ * Gate::before() in StarterKitServiceProvider lets Superusers through first.
+ */
 abstract class BasePolicy
 {
-    /**
-     * Superusers bypass all policy checks.
-     * Works with any auth user that has Spatie's HasRoles trait.
-     */
-    public function before(mixed $user, string $ability): ?bool
-    {
-        if (method_exists($user, 'hasRole') && $user->hasRole(config('starter-core.superuser_role', 'Superuser'))) {
-            return true;
-        }
-
-        return null;
-    }
-
-    /**
-     * The Spatie permission resource prefix, e.g. 'users', 'leave-types'.
-     */
-    abstract protected function resource(): string;
-
-    public function viewAny(mixed $user): bool
-    {
-        return $user->can("{$this->resource()}.view-grid");
-    }
-
     public function view(mixed $user, Model $model): bool
     {
-        return $user->can("{$this->resource()}.view");
-    }
-
-    public function create(mixed $user): bool
-    {
-        return $user->can("{$this->resource()}.create");
+        return true;
     }
 
     public function update(mixed $user, Model $model): bool
     {
-        return $user->can("{$this->resource()}.update");
+        return true;
     }
 
     public function delete(mixed $user, Model $model): bool
     {
-        return $user->can("{$this->resource()}.delete");
-    }
-
-    public function recycleBin(mixed $user): bool
-    {
-        return $user->can("{$this->resource()}.restore");
+        return true;
     }
 
     public function restore(mixed $user, Model $model): bool
     {
-        return $user->can("{$this->resource()}.restore");
+        return true;
     }
 
     public function forceDelete(mixed $user, Model $model): bool
     {
-        return $user->can("{$this->resource()}.force-delete");
+        return true;
     }
 }

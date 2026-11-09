@@ -79,7 +79,6 @@ class StarterKitServiceProvider extends ServiceProvider
 
             Route::prefix($prefix)
                 ->name($prefix.'.')
-                ->middleware("permission:{$prefix}.view")
                 ->group(function () use ($controller, $dtController, $prefix, $extras, $public): void {
                     if ($dtController) {
                         Route::get('/datatable', [$dtController, 'datatable'])
@@ -102,7 +101,8 @@ class StarterKitServiceProvider extends ServiceProvider
                     // Guarded read endpoints — registered here unless publicly exposed above.
                     if (! $public) {
                         Route::get('/select', [$controller, 'selectOptions'])
-                            ->name('select');
+                            ->name('select')
+                            ->middleware("permission:{$prefix}.view");
 
                         if ($dtController) {
                             Route::get('/json', [$dtController, 'json'])
@@ -127,7 +127,9 @@ class StarterKitServiceProvider extends ServiceProvider
                         $extras();
                     }
 
-                    Route::get('/{record}', [$controller, 'show'])->name('show');
+                    Route::get('/{record}', [$controller, 'show'])
+                        ->name('show')
+                        ->middleware("permission:{$prefix}.view");
 
                     Route::get('/{record}/edit', [$controller, 'edit'])
                         ->name('edit')
