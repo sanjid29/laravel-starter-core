@@ -17,14 +17,21 @@
                     <i class="bi bi-grid me-2"></i>
                     All {Module Names}
                 </h3>
-                <div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    @if(Route::has('{module-names}.report'))
+                        @can('{module-names}.report')
+                            <a href="{{ route('{module-names}.report') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark-bar-graph me-1"></i> Report
+                            </a>
+                        @endcan
+                    @endif
                     @can('{module-names}.restore')
-                        <a href="{{ route('{module-names}.recycle-bin') }}" class="btn btn-outline-danger btn-sm me-1">
+                        <a href="{{ route('{module-names}.recycle-bin') }}" class="btn btn-outline-danger btn-sm">
                             <i class="bi bi-trash me-1"></i> Recycle Bin
                         </a>
                     @endcan
                     @can('{module-names}.create')
-                        <a href="{{ route('{module-names}.create') }}" class="btn btn-primary">
+                        <a href="{{ route('{module-names}.create') }}" class="btn btn-primary btn-sm">
                             <i class="bi bi-plus-lg me-1"></i> Add {Module Name}
                         </a>
                     @endcan
